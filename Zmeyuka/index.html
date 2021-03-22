@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        .container {
+            overflow: hidden;
+            border: 3px solid black;
+        }
+        .rect {
+            float: left;
+            border: 1px solid #cecece;
+            width: 20px;
+            height: 20px;
+        }
+        .black {background: black; border-color: black}
+        .green {background: green; border-color: green}
+        .red {background: red; border-color: red}
+
+    </style>
+
+
+</head>
+
+<body>
+
+<div id="playground" class="container"></div>
+
+
+<script>
+
+    const print = console.log;
+    const DIRECTION = {up: 0, left: 1, down: 2, right: 3};
+    const range = (n) => [...new Array(n)].map((_, i) => i)
+
+    class GameCycle {
+        constructor(config) {
+            const {width, height, fruits, length} = config;
+            this.width = width;
+            this.height = height;
+            this.fruits = fruits;
+            this.length = length;
+            this.coors = {};
+            this.period = 150;
+            this.snake = [];
+
+            document.onkeydown = (ev) => this.onKeyDown(ev.key);
+        }
+
+        onKeyDown(key) {
+            const direction =  DIRECTION[key.toLowerCase().slice(5)];
+            if ((direction + this.direction) % 2) {
+                this.direction = direction;
+            }
+        }
+
+        redraw() {
+            const playground = document.getElementById('playground'),
+                html = [];
+
+            range(this.height).map(y => range(this.width).map(x => {
+                const pos = `${y}-${x}`,
+                    value = this.coors[pos],
+                    cls = value && (value === 1 ? 'black' : 'green');
+
+                html.push(`<div data="${pos}" class="rect ${cls}"></div>`)
+            }));
+            playground.style.width = 22*this.width + 'px';
+            playground.innerHTML = html.join('');
+        }
+
+        update_view() {
+            const {x, y} = this.snake[0];
+
+            range(this.height).map(y => range(this.width).map(x => {
+                const pos = `${y}-${x}`,
+                    value = this.coors[pos],
+                    cls = value && (value === 1 ? 'black' : 'green') || '',
+                    el = document.querySelector(`[data="${pos}"]`);
+
+                el.classList.remove('black', 'green', 'red');
+                cls && el.classList.add(cls);
+            }));
+            document.querySelector(`[data="${y}-${x}"]`).classList.add('red');
+        }
+
+        run() {
+            this.done = 0;
+            this.direction = 0;
+            this.coors = {};
+
+            range(this.fruits).map(_=>{
+                const x = Math.round(Math.random() * this.width),
+                    y = Math.round(Math.random() * this.height);
+
+                this.coors[`${y}-${x}`] = 2;
+            });
+            range(this.length).map(i => {
+                const x = Math.round(this.width / 2 - this.length/2),
+                    y = Math.round(this.height / 2);
+
+                this.snake.push({y, x: x+i});
+                this.coors[`${y}-${x+i}`] = 1;
+            });
+
+            this.redraw();
+
+            this.iid = setInterval(() => {
+                const head = this.snake[0],
+                    tail = this.snake.pop(),
+                    hew_head = {y: head.y + (this.direction - 1) % 2, x: head.x + (this.direction - 2) % 2},
+                    {x, y} = hew_head,
+                    key = `${y}-${x}`,
+                    value = this.coors[key];
+
+                if (value === 2) {
+                    this.done ++;
+                    if (this.done === this.fruits) {
+                        alert('Win');
+                        return clearInterval(this.iid);
+                    }
+                    this.snake.push(tail);
+                }
+                if (value === 1 || 0 > x || x > this.width || 0 > y || y > this.height) {
+                    clearInterval(this.iid);
+                    return alert('lost')
+                }
+                this.snake.unshift(hew_head);
+
+                this.coors[key] = 1;
+                this.coors[`${tail.y}-${tail.x}`] = 0;
+                this.update_view();
+
+            }, this.period);
+        }
+    }
+
+    (function () {
+        const config = {width: 40, height: 30, fruits: 30, length: 5};
+
+        new GameCycle(config).run();
+
+    })();
+
+</script>
+
+
+</body>
+</html>
